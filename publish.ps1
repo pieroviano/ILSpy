@@ -22,23 +22,31 @@ switch ($Platform) {
         $output_x64 = "$base/win-x64/publish/fwdependent"
         dotnet publish ./ILSpy/ILSpy.csproj -c $Configuration --no-restore --no-self-contained -r win-x64 -o $output_x64
         dotnet publish ./ILSpy.ReadyToRun/ILSpy.ReadyToRun.csproj -c $Configuration --no-restore --no-self-contained -r win-x64 -o $output_x64
+        dotnet publish ./ILSpy.Deobfuscation/ILSpy.Deobfuscation.csproj -c $Configuration --no-restore --no-self-contained -r win-x64 -o $output_x64
 
         if ($Configuration -eq 'Release') {
             $output_arm64 = "$base/win-arm64/publish/fwdependent"
             dotnet publish ./ILSpy/ILSpy.csproj -c $Configuration --no-restore --no-self-contained -r win-arm64 -o $output_arm64
             dotnet publish ./ILSpy.ReadyToRun/ILSpy.ReadyToRun.csproj -c $Configuration --no-restore --no-self-contained -r win-arm64 -o $output_arm64
+            # de4dotEx ships no arm64 build; the plugin downloads the x64 one and lets the OS
+            # emulate it, which it tells the user before downloading anything.
+            dotnet publish ./ILSpy.Deobfuscation/ILSpy.Deobfuscation.csproj -c $Configuration --no-restore --no-self-contained -r win-arm64 -o $output_arm64
 
             $output_x64_selfcontained = "$base/win-x64/publish/selfcontained"
             dotnet publish ./ILSpy/ILSpy.csproj -c $Configuration --no-restore --self-contained -r win-x64 -o $output_x64_selfcontained
             dotnet publish ./ILSpy.ReadyToRun/ILSpy.ReadyToRun.csproj -c $Configuration --no-restore --self-contained -r win-x64 -o $output_x64_selfcontained
+            dotnet publish ./ILSpy.Deobfuscation/ILSpy.Deobfuscation.csproj -c $Configuration --no-restore --self-contained -r win-x64 -o $output_x64_selfcontained
         }
     }
     'linux' {
         $output = "$base/linux-x64/publish/selfcontained"
         dotnet publish ./ILSpy/ILSpy.csproj -c $Configuration --no-restore --self-contained -r linux-x64 -o $output
         dotnet publish ./ILSpy.ReadyToRun/ILSpy.ReadyToRun.csproj -c $Configuration --no-restore --self-contained -r linux-x64 -o $output
+        dotnet publish ./ILSpy.Deobfuscation/ILSpy.Deobfuscation.csproj -c $Configuration --no-restore --self-contained -r linux-x64 -o $output
     }
     'macos' {
+        # ILSpy.Deobfuscation is deliberately absent here: de4dotEx publishes no macOS build, so the
+        # plugin would have nothing to run. Leaving it out keeps it out of ILSpy.app as well.
         $output = "$base/osx-arm64/publish/selfcontained"
         # The ReadyToRun plugin must be published first: BuildMacAppBundle runs after the
         # ILSpy publish and snapshots the publish directory into ILSpy.app/Contents/MacOS,
