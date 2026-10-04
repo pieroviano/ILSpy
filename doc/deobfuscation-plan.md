@@ -216,19 +216,26 @@ Detect-on-open: subscribe to the assembly list's collection-changed, filter to `
 
 ## 4. Tests
 
-TDD, red first (`AGENTS.md:61`). Tests needing the real tool skip via `Assert.Ignore` when it is not installed.
+Tests live in **`ILSpy.Deobfuscation.Tests`**, a project of its own rather than in `ILSpy.Tests`. A
+plain `ProjectReference` from `ILSpy.Tests` would copy `ILSpy.Deobfuscation.Plugin.dll` into its
+output, where `AppComposition`'s `*.Plugin.dll` scan would load it and add an options page to every
+headless test - exactly what `TestPlugin` is referenced with `ReferenceOutputAssembly="false"` to
+avoid. Everything worth testing here is pure logic, so no Avalonia harness is needed.
 
-| Area | File | Cases |
-|---|---|---|
-| Argument building | `ILSpy.Tests/Deobfuscation/De4DotArgumentTests.cs` | Options map to documented flags; `-o` always present; `--strtyp delegate` only when dynamic decryption is allowed; forced type passes `-p`. No process started. |
-| Output parsing | `ILSpy.Tests/Deobfuscation/De4DotOutputTests.cs` | `Detected SmartAssembly (x.dll)` parses; unknown/empty -> `IsObfuscated == false`; exit 1 -> failure carrying stderr. |
-| Process handling | `ILSpy.Tests/Deobfuscation/De4DotRunnerTests.cs` | Against a stub executable: stdin closed (B5), cancellation kills the child, non-zero exit surfaces stderr. |
-| Acquisition | `ILSpy.Tests/Deobfuscation/De4DotInstallerTests.cs` | Against a local zip and a fake HTTP handler (pattern: `ILSpy.Tests/Symbols/SymbolFixture.cs` `FakeHttpHandler`): digest mismatch rejects and leaves no cache; traversal entries rejected; a failed download leaves no partial install; configured path short-circuits. |
-| Platform gating | `ILSpy.Tests/Deobfuscation/De4DotPlatformTests.cs` | The RID -> asset map covers win-x64, win-arm64 (x64 asset) and linux-x64, and returns nothing for osx-arm64; `RequiresEmulation` is true only for win-arm64. Pure logic over an injected OS/architecture pair, so it runs on any host. |
-| Core untouched | `ILSpy.Tests/Options/OptionsTabTests.cs:167-171` | Unchanged and still passing: the 4-page assertion proves no plugin page leaked into the headless container and that core was not modified. |
-| Service round-trip | `ILSpy.Tests/Deobfuscation/DeobfuscationServiceTests.cs` | Skipped unless installed. Deobfuscate a `FixtureAssembly.Emit` assembly (`ILSpy.Tests/FixtureAssembly.cs:56`) and assert the output still loads as a `PEFile` (B7). |
-| Settings | `ILSpy.Tests/Deobfuscation/DeobfuscationSettingsTests.cs` | XML round-trip; `DetectOnOpen` and `AllowDynamicStringDecryption` default false. |
-| Plugin composition | `ILSpy.Tests/Deobfuscation/DeobfuscationPluginTests.cs` | Plugin exports resolve; entry visible only for a single valid assembly node. Templates: `ILSpy.Tests/Plugins/TestPluginCompositionTests.cs`, `ILSpy.Tests/AssemblyList/ReloadAssemblyContextMenuTests.cs:42`. |
+| File | Covers |
+|---|---|
+| `De4DotPlatformTests.cs` | The host matrix, including that macOS is `Unsupported` and only win-arm64 needs emulation. |
+| `De4DotReleaseTests.cs` | Both Windows hosts share the x64 asset; every asset has a 64-hex digest and a release URL; unsupported hosts have none. |
+| `De4DotArgumentTests.cs` | Each option maps to the documented flag; `-f`/`-o` always explicit; `--strtyp delegate` only on request. |
+| `De4DotOutputTests.cs` | `Detected <name> (<file>)` parsing, including names containing parentheses; no line means not obfuscated. |
+| `De4DotRunnerTests.cs` | Arguments reach the launcher, exit codes map to success/failure, cancellation propagates, and the start info always redirects stdin (B5). |
+| `De4DotInstallerTests.cs` | Digest mismatch, HTTP failure, zip traversal and a missing executable each install nothing; a present install is reused without downloading. |
+| `DeobfuscationSettingsTests.cs` | Defaults (both risky options off), XML round-trip, and that dynamic decryption needs the setting as well as the request. |
+| `DeobfuscationServiceTests.cs` | Executable resolution order, unsupported hosts resolving to nothing, unique output paths, and scratch cleanup. |
+| `PluginCompositionTests.cs` | The assembly name ends in `.Plugin`, the exports carry the expected header/category/order, and the availability gate needs no MEF container. |
+
+Not covered: a real de4dot run. That needs the GPLv3 tool on the machine, so it stays a manual check
+(§5) rather than something CI would have to download.
 
 ## 5. Verification
 
