@@ -23,9 +23,14 @@ using System.Net;
 using System.Net.Http;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+using ICSharpCode.Decompiler.DebugInfo;
+using ICSharpCode.Decompiler.Metadata;
+using ICSharpCode.ILSpyX.PdbProvider;
 
 #nullable enable
 
@@ -82,6 +87,25 @@ namespace ICSharpCode.ILSpyX.Symbols
 					return path;
 			}
 			return null;
+		}
+
+		/// <summary>
+		/// Looks up the module's PDB on the symbol path (downloading it if needed) and loads it as
+		/// debug info. Returns <c>null</c> when no matching PDB is found or it cannot be read.
+		/// </summary>
+		public async Task<IDebugInfoProvider?> LoadDebugInfoAsync(PEFile module, CancellationToken cancellationToken = default)
+		{
+			string? pdbFileName = await FindPdbAsync(module.Reader, cancellationToken).ConfigureAwait(false);
+			if (pdbFileName == null)
+				return null;
+			try
+			{
+				return DebugInfoUtils.FromFile(module, pdbFileName);
+			}
+			catch (Exception ex) when (ex is BadImageFormatException || ex is COMException || ex is IOException)
+			{
+				return null;
+			}
 		}
 
 		/// <summary>Forgets memoized results so the next lookup probes the symbol path again.</summary>
