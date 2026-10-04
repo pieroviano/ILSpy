@@ -9,7 +9,8 @@ de4dotEx executable out-of-process, obtained from an official release on demand.
 |---|---|---|---|
 | B1 | **de4dotEx is GPLv3; ILSpy is MIT** (`LICENSE:1`). de4dot is never linked and never ships inside ILSpy; it is downloaded by the user, into a per-user cache, and run as a separate process. | Linking or bundling would make the distributed ILSpy a GPLv3 combined work. | Confirm no build target copies de4dot into `ILSpy/bin`, and that nothing references `de4dot.*` assemblies. |
 | B2 | **Release source.** `tsautier/de4dotEx` (the repo originally named) publishes **no release assets** - only stale tags `3.2.0-3.2.2`. Its upstream `GDATAAdvancedAnalytics/de4dotEx` publishes the binaries this plan consumes. | The whole acquisition design depends on real assets existing. | `GET /repos/GDATAAdvancedAnalytics/de4dotEx/releases/latest` -> tag `3.10.0`, published 2026-09-17. |
-| B3 | **Platform coverage.** 3.10.0 ships `net10.0` for **win-x64 and linux-x64 only** (plus `net48` and a `.deb`). There is **no macOS and no arm64 asset**, while ILSpy targets `win-x64;win-arm64;linux-x64;osx-arm64`. | On unsupported platforms the feature cannot auto-install. | Confirm the manual-path fallback (§3.2) is acceptable there, or that the feature simply reports unavailable. |
+| B3 | **Platform coverage.** 3.10.0 ships `net10.0` for **win-x64 and linux-x64 only** (plus `net48` and a `.deb`). There is **no macOS and no arm64 asset**, while ILSpy targets `win-x64;win-arm64;linux-x64;osx-arm64`. | Decides where the plugin ships at all (§1.1). | Compare the asset list against `ILSpy/ILSpy.csproj:8`. |
+| B3a | **win-arm64 runs the win-x64 build under Windows' x64 emulation.** Unverified. | win-arm64 ships the plugin on this assumption. | On a real ARM64 Windows device, install and run `de4dot -d <sample>`; confirm it executes and detects. If it fails, the install surfaces the error and the user can still supply a native build manually. |
 | B4 | de4dot's `-d` output format and exit codes are as assumed. | The detect parser depends on both. | Run `de4dot -d <sample>`: expect `Detected <Name> (<path>)` on stdout, exit `0`. Unknown obfuscators print `Skipping unknown obfuscator: <path>` only under `-v`. Source: `de4dot.cui/FilesDeobfuscator.cs`, `de4dot.cui/Program.cs` (`0` success, `1` on `UserException`/unhandled, else `ExitException.code`). |
 | B5 | de4dot never blocks waiting for a key press. | `Program.Main` calls `Console.ReadKey` when `IsN00bUser()`; it throws `InvalidOperationException` (caught) only when stdin is redirected. | Always start the child with `RedirectStandardInput = true` and close stdin at once. Verify a run returns. |
 | B6 | Dynamic string decryption works (or not) per OS. | de4dot resolves strings by invoking the target's own decrypter through `AssemblyServer*` helpers, which are .NET Framework executables. | Run `--strtyp delegate` on Windows and Linux; record the result. Expect Windows-only; if so the option is disabled elsewhere. |
@@ -30,6 +31,20 @@ de4dotEx executable out-of-process, obtained from an official release on demand.
 | On-load behaviour | Detection runs **only for explicitly opened assemblies**, in the background, off by default, and only **offers** to deobfuscate. | See the rejection below. |
 | String decryption | Opt-in per run, off by default, behind a confirmation naming the risk. | It executes the target assembly's code. |
 | Code split | Runner + options model in `ICSharpCode.ILSpyX/Deobfuscation/` (no UI types); all UI in the plugin. | Lets `ilspycmd` keep its flags while the UI ships as a plugin. **This reconciles two conflicting answers - confirm (B8).** |
+| Platform support | **Supported platforms only** (§1.1): the plugin is not published on macOS, and registers nothing at runtime where de4dot cannot run. | A user on an unsupported platform sees no deobfuscation UI at all, rather than a feature that cannot work. Costs one small core change (§3.5). |
+
+### 1.1 Platform support matrix
+
+| ILSpy RID | de4dot asset | Plugin published | Notes |
+|---|---|---|---|
+| `win-x64` | `de4dotEx-<v>-net10.0-win-x64.zip` | Yes | Native. |
+| `linux-x64` | `de4dotEx-<v>-net10.0-linux-x64.zip` | Yes | Native. |
+| `win-arm64` | win-x64 asset, under emulation | Yes | **Unverified (B3a).** The consent dialog states that an x64 build will be downloaded and run under Windows' x64 emulation. |
+| `osx-arm64` | none | **No** | de4dotEx publishes no macOS build. Omitted from the macOS publish, so it is absent from `ILSpy.app`. |
+| anything else | none | n/a | Runtime gate reports unsupported and registers nothing. |
+
+The `net48` and `.deb` assets are deliberately unused: the first needs .NET Framework, the second is a
+distro package rather than a portable payload.
 
 **Rejected: an `IFileLoader` that deobfuscates during load** (`ICSharpCode.ILSpyX/FileLoaders/FileLoaderRegistry.cs:40`). It is the natural-looking hook and the shape `XamarinCompressedFileLoader` uses, but it runs for every loaded file, cannot prompt, and would spawn a process per auto-loaded reference.
 
@@ -78,6 +93,19 @@ Exit codes: `0` success, `1` failure.
 
 Added to `ILSpy.sln` and `ILSpy.Desktop.slnf` next to `ILSpy.ReadyToRun`. Plugin strings are literals or plugin-local resources; **core `Resources.resx` / `Resources.Designer.cs` are not touched.**
 
+The project itself is a plain `net10.0` library and builds on every host, so CI stays uniform. Platform
+support is expressed at **publish** time, in `publish.ps1`, which already lists each plugin per
+platform:
+
+| Branch | Change |
+|---|---|
+| `windows` | Publish the plugin alongside `ILSpy.ReadyToRun` for `win-x64` (framework-dependent and self-contained) and for `win-arm64`. |
+| `linux` | Publish it alongside `ILSpy.ReadyToRun` for `linux-x64`. |
+| `macos` | **No plugin publish.** `BuildMacAppBundle` snapshots the publish directory into `ILSpy.app/Contents/MacOS` (`ILSpy/ILSpy.csproj:165-168`), so omitting it here keeps it out of the bundle entirely. |
+
+A developer build (`build.ps1`) still drops the DLL into `ILSpy/bin` on every OS, because `OutputPath`
+is unconditional - which is exactly what the runtime gate in §3.5 covers.
+
 ### 3.2 Acquisition - `ILSpy.Deobfuscation/Acquisition/`
 
 | File | Contents |
@@ -96,7 +124,8 @@ Pinned assets (`https://github.com/GDATAAdvancedAnalytics/de4dotEx/releases/down
 Rules:
 
 - Cache root `%LOCALAPPDATA%/ILSpy/de4dot/<version>/`, matching the symbol cache convention (`ICSharpCode.ILSpyX/Symbols/SymbolPath.cs:49`: `GetFolderPath(LocalApplicationData, DoNotVerify)`).
-- **Nothing is downloaded without consent.** The first use shows repo, version, asset, size and URL, and proceeds only on accept.
+- **Nothing is downloaded without consent.** The first use shows repo, version, asset, size and URL, and proceeds only on accept. On `win-arm64` it additionally states that the x64 build will be downloaded and run under Windows' x64 emulation (B3a).
+- Asset selection: `win-x64` and `win-arm64` both take the win-x64 asset; `linux-x64` takes the linux-x64 asset. Anything else never reaches this code (§3.5).
 - Download with the proxy-aware `HttpClient` shape already used by `ILSpy/Updates/UpdateService.cs:66-69`; verify SHA-256 against the table before extracting; extract to a temp dir and move into place, so a failed install never leaves a half-extracted cache.
 - Zip entries are extracted only under the destination root (guard against `..` traversal).
 - **Manual override always wins:** a configured path in Options bypasses acquisition entirely. This is the only route on platforms with no asset (B3) and for offline or proxied environments.
@@ -142,12 +171,45 @@ Options page `[ExportOptionPage(Order = 45)]`, modelled on `ILSpy/Options/Symbol
 
 Because the page ships in a plugin, it does **not** appear in the headless test container - `ILSpy.Tests/Options/OptionsTabTests.cs:167-171` asserts exactly 4 pages and already excludes `ILSpy.ReadyToRun`'s page (Order 40). **Confirm this holds when implementing**; if plugin pages do load there, update that assertion.
 
-### 3.5 UI (in the plugin)
+### 3.5 UI and the runtime platform gate (in the plugin)
+
+`De4DotPlatform.cs` is the single source of truth:
+
+```csharp
+public static bool IsSupported =>
+    (OperatingSystem.IsWindows() && RuntimeInformation.OSArchitecture is Architecture.X64 or Architecture.Arm64)
+    || (OperatingSystem.IsLinux() && RuntimeInformation.OSArchitecture is Architecture.X64);
+
+/// <summary>win-arm64 runs the x64 build under emulation; the consent dialog says so.</summary>
+public static bool RequiresEmulation =>
+    OperatingSystem.IsWindows() && RuntimeInformation.OSArchitecture is Architecture.Arm64;
+```
 
 | Surface | Shape |
 |---|---|
-| Context menu "Deobfuscate" | `[ExportContextMenuEntry(Header = "Deobfuscate", Category = "Debug", Order = 430)]`, visible for a single `AssemblyTreeNode` with `IsLoadedAsValidAssembly`. Template: `ILSpy/Commands/SetTargetFrameworkContextMenuEntry.cs:36`. |
-| Context menu "Detect obfuscator" | Runs detection, reports through `DockWorkspace.ShowTextInNewTab`. |
+| Context menu "Deobfuscate" | `[ExportContextMenuEntry(Header = "Deobfuscate", Category = "Debug", Order = 430)]`, `IsVisible` requires `De4DotPlatform.IsSupported` plus a single `AssemblyTreeNode` with `IsLoadedAsValidAssembly`. Template: `ILSpy/Commands/SetTargetFrameworkContextMenuEntry.cs:36`. An invisible entry is omitted from the built menu, so nothing shows. |
+| Context menu "Detect obfuscator" | Same gate; runs detection and reports through `DockWorkspace.ShowTextInNewTab`. |
+| Options page | Needs the core change below - `OptionsPageModel` materialises **every** exported page with no filter (`ILSpy/Options/OptionsPageModel.cs:47-51`). |
+
+**The one core change.** `IOptionPage` gains an optional companion interface so a page can decline to
+appear, and the host honours it:
+
+```csharp
+// ILSpy/Options/IOptionPage.cs
+/// <summary>Implemented by option pages that only apply on some platforms or configurations.</summary>
+public interface IConditionalOptionPage { bool IsAvailable { get; } }
+
+// ILSpy/Options/OptionsPageModel.cs, replacing the Select(...).ToArray() at :47-51
+Pages = pageFactories
+    .OrderBy(f => f.Metadata.Order)
+    .Select(f => f.CreateExport().Value)
+    .Where(p => p is not IConditionalOptionPage { IsAvailable: false })
+    .ToArray();
+```
+
+Three lines, no behaviour change for existing pages, and generally useful - `ILSpy.ReadyToRun` could
+adopt it. The alternative (leaving the page visible on macOS dev builds) contradicts "available only on
+supported platforms", and metadata cannot express it because `IOptionsMetadata` is static (`Order` only).
 
 Run flow:
 
@@ -188,7 +250,8 @@ TDD, red first (`AGENTS.md:61`). Tests needing the real tool skip via `Assert.Ig
 | Output parsing | `ILSpy.Tests/Deobfuscation/De4DotOutputTests.cs` | `Detected SmartAssembly (x.dll)` parses; unknown/empty -> `IsObfuscated == false`; exit 1 -> failure carrying stderr. |
 | Process handling | `ILSpy.Tests/Deobfuscation/De4DotRunnerTests.cs` | Against a stub executable: stdin closed (B5), cancellation kills the child, non-zero exit surfaces stderr. |
 | Acquisition | `ILSpy.Tests/Deobfuscation/De4DotInstallerTests.cs` | Against a local zip and a fake HTTP handler (pattern: `ILSpy.Tests/Symbols/SymbolFixture.cs` `FakeHttpHandler`): digest mismatch rejects and leaves no cache; traversal entries rejected; a failed download leaves no partial install; configured path short-circuits. |
-| Platform gating | same | Unsupported RID reports unavailable with the manual-path hint, never throws (B3). |
+| Platform gating | `ILSpy.Tests/Deobfuscation/De4DotPlatformTests.cs` | The RID -> asset map covers win-x64, win-arm64 (x64 asset) and linux-x64, and returns nothing for osx-arm64; `RequiresEmulation` is true only for win-arm64. Pure logic over an injected OS/architecture pair, so it runs on any host. |
+| Conditional option page | `ILSpy.Tests/Options/ConditionalOptionPageTests.cs` | A page reporting `IsAvailable == false` is absent from `OptionsPageModel.Pages`; existing pages (which do not implement the interface) are unaffected - the current 4-page assertion at `ILSpy.Tests/Options/OptionsTabTests.cs:167-171` must still pass. |
 | Service round-trip | `ILSpy.Tests/Deobfuscation/DeobfuscationServiceTests.cs` | Skipped unless installed. Deobfuscate a `FixtureAssembly.Emit` assembly (`ILSpy.Tests/FixtureAssembly.cs:56`) and assert the output still loads as a `PEFile` (B7). |
 | Settings | `ILSpy.Tests/Deobfuscation/DeobfuscationSettingsTests.cs` | XML round-trip; `DetectOnOpen` and `AllowDynamicStringDecryption` default false. |
 | Plugin composition | `ILSpy.Tests/Deobfuscation/DeobfuscationPluginTests.cs` | Plugin exports resolve; entry visible only for a single valid assembly node. Templates: `ILSpy.Tests/Plugins/TestPluginCompositionTests.cs`, `ILSpy.Tests/AssemblyList/ReloadAssemblyContextMenuTests.cs:42`. |
@@ -201,7 +264,20 @@ TDD, red first (`AGENTS.md:61`). Tests needing the real tool skip via `Assert.Ig
 dotnet test --solution ILSpy.sln --report-trx
 ```
 
-Manual: with no de4dot installed, confirm the feature reports unavailable and offers the download; accept it and confirm the cache is populated and verified; run Deobfuscate on an obfuscated sample and confirm a second assembly appears, decompiles with readable names, and the original is unchanged; confirm `ILSpy/bin` contains no `de4dot*` file.
+Manual: with no de4dot installed, confirm the feature offers the download; accept it and confirm the cache is populated and verified; run Deobfuscate on an obfuscated sample and confirm a second assembly appears, decompiles with readable names, and the original is unchanged; confirm `ILSpy/bin` contains no `de4dot*` file.
+
+Platform checks:
+
+```powershell
+./publish.ps1 -Configuration Release -Platform macos
+# expect: no ILSpy.Deobfuscation.Plugin.dll in the publish dir or inside ILSpy.app
+./publish.ps1 -Configuration Release -Platform windows   # expect: present for win-x64 and win-arm64
+./publish.ps1 -Configuration Release -Platform linux     # expect: present for linux-x64
+```
+
+On a macOS dev build (where `build.ps1` still copies the DLL into `ILSpy/bin`), confirm no Deobfuscate
+entries and no Symbols-style options page appear. On ARM64 Windows, confirm the consent dialog mentions
+emulation and that the installed tool actually runs (B3a).
 
 ## 6. Risks
 
@@ -210,7 +286,8 @@ Manual: with no de4dot installed, confirm the feature reports unavailable and of
 | **GPLv3 contamination** | ILSpy could not ship as MIT. | Out-of-process only; no `ProjectReference`; nothing copied into ILSpy's output; the binary lives in a per-user cache the user chose to populate. B1. |
 | **Downloading and executing a binary** | Supply-chain exposure. | Pinned version, SHA-256 verified before extraction, HTTPS, explicit consent showing the URL, traversal-guarded extraction. |
 | **Dynamic string decryption executes malware** | Host compromise while analysing a sample. | Off by default, per-run confirmation, never implied by another option, stated in the options page. |
-| No macOS/arm64 asset | Feature cannot auto-install there. | B3; manual path override; clear "unavailable on this platform" message. |
+| No macOS asset | Feature cannot exist there. | B3; the plugin is not published on macOS and registers nothing if a dev build drops it there (§3.5). |
+| win-arm64 emulation unverified | Install succeeds but de4dot fails to start on ARM Windows. | B3a; the consent dialog states the emulation up front, and a launch failure surfaces as a normal tool error with the manual-path override still available. |
 | Dynamic decryption likely Windows-only | Silent failure elsewhere. | B6; disable the option on other platforms once confirmed. |
 | de4dot corrupts `net10.0` output | Cleaned assembly will not decompile. | B7; the original is never overwritten. |
 | Upstream release disappears or changes | Install breaks. | Pin + digests fail loudly; manual override remains. |
