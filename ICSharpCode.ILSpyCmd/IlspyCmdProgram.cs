@@ -1294,7 +1294,7 @@ Examples:
 			var locator = new SymbolLocator(SymbolPath.Parse(
 				SymbolPathText.Equals("default", StringComparison.OrdinalIgnoreCase) ? SymbolPath.DefaultSymbolPath : SymbolPathText,
 				SymbolCacheDirectory));
-			return DebugInfoUtils.LoadSymbolsFromSymbolPathAsync(module, locator).GetAwaiter().GetResult();
+			return locator.LoadDebugInfoAsync(module).GetAwaiter().GetResult();
 		}
 
 		async Task<int> ServeSymbolsAsync(int port, CommandLineApplication app)

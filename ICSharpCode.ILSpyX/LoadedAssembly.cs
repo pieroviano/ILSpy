@@ -595,8 +595,7 @@ namespace ICSharpCode.ILSpyX
 		async Task<IDebugInfoProvider?> LoadDebugInfoFromSymbolPathCoreAsync(PEFile module,
 			Symbols.SymbolLocator locator, CancellationToken cancellationToken)
 		{
-			var provider = await DebugInfoUtils.LoadSymbolsFromSymbolPathAsync(module, locator, cancellationToken)
-				.ConfigureAwait(false);
+			var provider = await locator.LoadDebugInfoAsync(module, cancellationToken).ConfigureAwait(false);
 			if (provider != null)
 				PdbFileName = provider.SourceFileName;
 			return provider;
