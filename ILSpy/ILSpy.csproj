@@ -163,9 +163,7 @@
          ILSpy.app/Contents/MacOS/<published files, with apphost made executable>
          ILSpy.app/Contents/Resources/ILSpy.icns
        Trigger: any osx-* RuntimeIdentifier after the standard Publish target. -->
-  <Target Name="BuildMacAppBundle"
-          AfterTargets="Publish"
-          Condition="$(RuntimeIdentifier.StartsWith('osx-'))">
+  <Target Name="BuildMacAppBundle" AfterTargets="Publish" Condition="$(RuntimeIdentifier.StartsWith('osx-'))">
     <PropertyGroup>
       <_MacBundleRoot>$([System.IO.Path]::GetFullPath('$(PublishDir)..'))/$(AssemblyName).app</_MacBundleRoot>
       <_MacBundleContents>$(_MacBundleRoot)/Contents</_MacBundleContents>
@@ -175,14 +173,10 @@
     </ItemGroup>
     <RemoveDir Directories="$(_MacBundleRoot)" />
     <MakeDir Directories="$(_MacBundleContents);$(_MacBundleContents)/MacOS;$(_MacBundleContents)/Resources" />
-    <Copy SourceFiles="@(_MacPublishFiles)"
-          DestinationFiles="@(_MacPublishFiles->'$(_MacBundleContents)/MacOS/%(RecursiveDir)%(Filename)%(Extension)')" />
-    <Copy SourceFiles="$(MSBuildProjectDirectory)/Assets/ILSpy.icns"
-          DestinationFolder="$(_MacBundleContents)/Resources" />
-    <Copy SourceFiles="$(MSBuildProjectDirectory)/Assets/macos/Info.plist"
-          DestinationFolder="$(_MacBundleContents)" />
-    <Exec Command="chmod +x &quot;$(_MacBundleContents)/MacOS/$(AssemblyName)&quot;"
-          Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
+    <Copy SourceFiles="@(_MacPublishFiles)" DestinationFiles="@(_MacPublishFiles->'$(_MacBundleContents)/MacOS/%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/Assets/ILSpy.icns" DestinationFolder="$(_MacBundleContents)/Resources" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/Assets/macos/Info.plist" DestinationFolder="$(_MacBundleContents)" />
+    <Exec Command="chmod +x &quot;$(_MacBundleContents)/MacOS/$(AssemblyName)&quot;" Condition="!$([MSBuild]::IsOSPlatform('Windows'))" />
     <Message Importance="high" Text="macOS bundle written to $(_MacBundleRoot)" />
   </Target>
 
@@ -204,6 +198,12 @@
     <SortResXInput Include="Properties\*.resx" />
     <SortResXInput Include="..\ILSpy.ReadyToRun\Properties\*.resx" />
     <SortResXStamp Include="obj\sort-resx.stamp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResourceGenerator</Generator>
+    </EmbeddedResource>
   </ItemGroup>
 
   <!-- Keep .resx entries sorted by name so localisation diffs stay clean. Local Windows builds

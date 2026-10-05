@@ -51,4 +51,10 @@
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResourceGenerator</Generator>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>
