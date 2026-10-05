@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:ICSharpCode.ILSpy.Deobfuscation.UI"
+             mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="400"
+             x:Class="ICSharpCode.ILSpy.Deobfuscation.UI.DeobfuscationOptionsView"
+             x:DataType="vm:DeobfuscationOptionsViewModel">
+	<StackPanel Spacing="6" Margin="6">
+		<TextBlock Text="de4dotEx" FontWeight="Bold" />
+		<SelectableTextBlock Text="{Binding Status}" TextWrapping="Wrap" />
+		<TextBlock Text="{Binding InstallDescription}" TextWrapping="Wrap" Opacity="0.8" />
+		<StackPanel Orientation="Horizontal" Spacing="6">
+			<Button Content="Download and install" Command="{Binding InstallCommand}"
+			        IsEnabled="{Binding !IsBusy}" />
+		</StackPanel>
+
+		<TextBlock Text="Use this de4dot executable instead (leave empty to use the downloaded one)"
+		           TextWrapping="Wrap" Margin="0,12,0,0" />
+		<TextBox Text="{Binding Settings.De4DotPath, Mode=TwoWay}" />
+
+		<TextBlock Text="Deobfuscation" FontWeight="Bold" Margin="0,12,0,0" />
+		<CheckBox IsChecked="{Binding Settings.RenameSymbols, Mode=TwoWay}"
+		          Content="Restore readable names for obfuscated symbols" />
+		<CheckBox IsChecked="{Binding Settings.PreserveTokens, Mode=TwoWay}"
+		          Content="Preserve metadata tokens and heaps" />
+		<StackPanel Orientation="Horizontal" Spacing="6">
+			<TextBlock Text="Keep names:" VerticalAlignment="Center" />
+			<TextBox Text="{Binding Settings.KeepNames, Mode=TwoWay}" MinWidth="120"
+			         Watermark="n t p e f m a g d" />
+		</StackPanel>
+		<CheckBox IsChecked="{Binding Settings.DetectOnOpen, Mode=TwoWay}"
+		          Content="Detect the obfuscator of assemblies as they are opened" />
+
+		<TextBlock Text="String decryption" FontWeight="Bold" Margin="0,12,0,0" />
+		<TextBlock TextWrapping="Wrap"
+		           Text="de4dot can decrypt string literals by calling the analysed assembly's own decrypter. That EXECUTES code from the assembly on this machine. Only enable it for assemblies you trust, and expect to confirm it on every run." />
+		<CheckBox IsChecked="{Binding Settings.AllowDynamicStringDecryption, Mode=TwoWay}"
+		          Content="Allow string decryption that executes the analysed assembly" />
+	</StackPanel>
+</UserControl>

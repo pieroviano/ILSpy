@@ -15,7 +15,7 @@ de4dotEx executable out-of-process, obtained from an official release on demand.
 | B5 | de4dot never blocks waiting for a key press. | `Program.Main` calls `Console.ReadKey` when `IsN00bUser()`; it throws `InvalidOperationException` (caught) only when stdin is redirected. | Always start the child with `RedirectStandardInput = true` and close stdin at once. Verify a run returns. |
 | B6 | Dynamic string decryption works (or not) per OS. | de4dot resolves strings by invoking the target's own decrypter through `AssemblyServer*` helpers, which are .NET Framework executables. | Run `--strtyp delegate` on Windows and Linux; record the result. Expect Windows-only; if so the option is disabled elsewhere. |
 | B7 | de4dot handles `net10.0` assemblies without corrupting them. | A bad rewrite yields an assembly ILSpy cannot read. | Deobfuscate an unobfuscated `net10.0` sample; confirm ILSpy still decompiles the output. |
-| B8 | **Confirm the ilspycmd split (§1, "Code split").** | Three decisions pull apart: "code in ILSpyX, UI + ilspycmd", "implement as a plugin", and "keep core strictly untouched". A UI plugin cannot be loaded by `ilspycmd`, so CLI support requires new files in `ICSharpCode.ILSpyX` - additive, but outside the plugin. | Either keep the split (runner in ILSpyX, UI in the plugin, `ilspycmd` works), or put everything in the plugin and drop `ilspycmd` support, leaving every project outside `ILSpy.Deobfuscation/` byte-identical except `publish.ps1` and the solution files. |
+| B8 | ~~Confirm the ilspycmd split.~~ **Resolved: everything lives in the plugin; `ilspycmd` gets no deobfuscation support.** | Keeping core strictly untouched won over CLI support. | Nothing to check: the only files outside `ILSpy.Deobfuscation/` are `publish.ps1`, `ILSpy.sln` and `ILSpy.Desktop.slnf`. |
 
 ## 1. Decisions
 
@@ -30,7 +30,7 @@ de4dotEx executable out-of-process, obtained from an official release on demand.
 | Output | **Temp file, opened alongside** the original. | Original untouched and comparable. Temp directory removed at exit. |
 | On-load behaviour | Detection runs **only for explicitly opened assemblies**, in the background, off by default, and only **offers** to deobfuscate. | See the rejection below. |
 | String decryption | Opt-in per run, off by default, behind a confirmation naming the risk. | It executes the target assembly's code. |
-| Code split | Runner + options model in `ICSharpCode.ILSpyX/Deobfuscation/` (no UI types); all UI in the plugin. | Lets `ilspycmd` keep its flags while the UI ships as a plugin. **This reconciles two conflicting answers - confirm (B8).** |
+| Code split | **Everything in `ILSpy.Deobfuscation/`.** | Core is strictly untouched: outside the plugin only `publish.ps1` and the two solution files change. `ilspycmd` gets no deobfuscation support, because it cannot load a UI plugin (B8). |
 | Platform support | **Supported platforms only** (§1.1): the plugin is not published on macOS, and its commands register nothing at runtime where de4dot cannot run. | No shipped artifact offers a feature that cannot work. **Core stays strictly untouched**, which leaves one developer-only wrinkle (§3.5). |
 
 ### 1.1 Platform support matrix
@@ -130,9 +130,9 @@ Rules:
 - **Manual override always wins:** a configured path in Options bypasses acquisition entirely. This is the only route on platforms with no asset (B3) and for offline or proxied environments.
 - "Check for newer" queries `releases/latest` and reports the newer tag; it never auto-upgrades the pin.
 
-### 3.3 Core runner - `ICSharpCode.ILSpyX/Deobfuscation/`
+### 3.3 Runner - `ILSpy.Deobfuscation/Core/`
 
-No UI types, so `ilspycmd` can use it (B8).
+No UI types, so it stays unit-testable on its own.
 
 | File | Contents |
 |---|---|
@@ -214,41 +214,28 @@ Run flow:
 
 Detect-on-open: subscribe to the assembly list's collection-changed, filter to `!IsAutoLoaded`, debounce, run `DetectAsync` off the UI thread, and on a hit surface a non-modal offer. Never blocks the load path.
 
-### 3.6 ilspycmd
-
-Depends on B8. If kept, in `ICSharpCode.ILSpyCmd/IlspyCmdProgram.cs` alongside the symbol options (`:140-148`):
-
-```csharp
-[Option("--detect-obfuscator", "Detect the obfuscator used by the input assemblies and exit.", CommandOptionType.NoValue)]
-public bool DetectObfuscatorFlag { get; }
-
-[Option("--deobfuscate", "Deobfuscate the input with de4dot before decompiling.", CommandOptionType.NoValue)]
-public bool DeobfuscateFlag { get; }
-
-[Option("--de4dot-path <path>", "Path to the de4dot executable. Required; ilspycmd does not download it.", CommandOptionType.SingleValue)]
-public string De4DotPath { get; }
-
-[Option("--deobfuscate-strings", "Allow de4dot to decrypt strings by EXECUTING the target assembly's own decrypter. Only use on assemblies you trust.", CommandOptionType.SingleValue)]
-public string DeobfuscateStrings { get; }
-```
-
-`--detect-obfuscator` is handled in `OnExecuteAsync` next to `ServeSymbolsPort` (`:304`); `--deobfuscate` substitutes the cleaned path in `PerformPerFileAction` (`:364`). The CLI never downloads: `--de4dot-path` (or `PATH`) is required.
-
 ## 4. Tests
 
-TDD, red first (`AGENTS.md:61`). Tests needing the real tool skip via `Assert.Ignore` when it is not installed.
+Tests live in **`ILSpy.Deobfuscation.Tests`**, a project of its own rather than in `ILSpy.Tests`. A
+plain `ProjectReference` from `ILSpy.Tests` would copy `ILSpy.Deobfuscation.Plugin.dll` into its
+output, where `AppComposition`'s `*.Plugin.dll` scan would load it and add an options page to every
+headless test - exactly what `TestPlugin` is referenced with `ReferenceOutputAssembly="false"` to
+avoid. Everything worth testing here is pure logic, so no Avalonia harness is needed.
 
-| Area | File | Cases |
-|---|---|---|
-| Argument building | `ILSpy.Tests/Deobfuscation/De4DotArgumentTests.cs` | Options map to documented flags; `-o` always present; `--strtyp delegate` only when dynamic decryption is allowed; forced type passes `-p`. No process started. |
-| Output parsing | `ILSpy.Tests/Deobfuscation/De4DotOutputTests.cs` | `Detected SmartAssembly (x.dll)` parses; unknown/empty -> `IsObfuscated == false`; exit 1 -> failure carrying stderr. |
-| Process handling | `ILSpy.Tests/Deobfuscation/De4DotRunnerTests.cs` | Against a stub executable: stdin closed (B5), cancellation kills the child, non-zero exit surfaces stderr. |
-| Acquisition | `ILSpy.Tests/Deobfuscation/De4DotInstallerTests.cs` | Against a local zip and a fake HTTP handler (pattern: `ILSpy.Tests/Symbols/SymbolFixture.cs` `FakeHttpHandler`): digest mismatch rejects and leaves no cache; traversal entries rejected; a failed download leaves no partial install; configured path short-circuits. |
-| Platform gating | `ILSpy.Tests/Deobfuscation/De4DotPlatformTests.cs` | The RID -> asset map covers win-x64, win-arm64 (x64 asset) and linux-x64, and returns nothing for osx-arm64; `RequiresEmulation` is true only for win-arm64. Pure logic over an injected OS/architecture pair, so it runs on any host. |
-| Core untouched | `ILSpy.Tests/Options/OptionsTabTests.cs:167-171` | Unchanged and still passing: the 4-page assertion proves no plugin page leaked into the headless container and that core was not modified. |
-| Service round-trip | `ILSpy.Tests/Deobfuscation/DeobfuscationServiceTests.cs` | Skipped unless installed. Deobfuscate a `FixtureAssembly.Emit` assembly (`ILSpy.Tests/FixtureAssembly.cs:56`) and assert the output still loads as a `PEFile` (B7). |
-| Settings | `ILSpy.Tests/Deobfuscation/DeobfuscationSettingsTests.cs` | XML round-trip; `DetectOnOpen` and `AllowDynamicStringDecryption` default false. |
-| Plugin composition | `ILSpy.Tests/Deobfuscation/DeobfuscationPluginTests.cs` | Plugin exports resolve; entry visible only for a single valid assembly node. Templates: `ILSpy.Tests/Plugins/TestPluginCompositionTests.cs`, `ILSpy.Tests/AssemblyList/ReloadAssemblyContextMenuTests.cs:42`. |
+| File | Covers |
+|---|---|
+| `De4DotPlatformTests.cs` | The host matrix, including that macOS is `Unsupported` and only win-arm64 needs emulation. |
+| `De4DotReleaseTests.cs` | Both Windows hosts share the x64 asset; every asset has a 64-hex digest and a release URL; unsupported hosts have none. |
+| `De4DotArgumentTests.cs` | Each option maps to the documented flag; `-f`/`-o` always explicit; `--strtyp delegate` only on request. |
+| `De4DotOutputTests.cs` | `Detected <name> (<file>)` parsing, including names containing parentheses; no line means not obfuscated. |
+| `De4DotRunnerTests.cs` | Arguments reach the launcher, exit codes map to success/failure, cancellation propagates, and the start info always redirects stdin (B5). |
+| `De4DotInstallerTests.cs` | Digest mismatch, HTTP failure, zip traversal and a missing executable each install nothing; a present install is reused without downloading. |
+| `DeobfuscationSettingsTests.cs` | Defaults (both risky options off), XML round-trip, and that dynamic decryption needs the setting as well as the request. |
+| `DeobfuscationServiceTests.cs` | Executable resolution order, unsupported hosts resolving to nothing, unique output paths, and scratch cleanup. |
+| `PluginCompositionTests.cs` | The assembly name ends in `.Plugin`, the exports carry the expected header/category/order, and the availability gate needs no MEF container. |
+
+Not covered: a real de4dot run. That needs the GPLv3 tool on the machine, so it stays a manual check
+(§5) rather than something CI would have to download.
 
 ## 5. Verification
 
@@ -294,4 +281,5 @@ Windows, confirm the consent dialog mentions emulation and that the installed to
 
 Deobfuscating assemblies inside bundles/packages (`LoadedPackage` entries have no on-disk path,
 `ICSharpCode.ILSpyX/LoadedPackage.cs:401`); batch/recursive deobfuscation (`-r`); de4dot's MCP
-server (`de4dot.mcp`); writing the cleaned assembly over the original; shipping de4dot with ILSpy.
+server (`de4dot.mcp`); writing the cleaned assembly over the original; shipping de4dot with ILSpy;
+`ilspycmd` support, which would require code outside the plugin (B8).

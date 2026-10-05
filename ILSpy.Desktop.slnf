@@ -10,6 +10,8 @@
 			"ICSharpCode.ILSpyX\\ICSharpCode.ILSpyX.csproj",
 			"ILSpy.BamlDecompiler.Tests\\ILSpy.BamlDecompiler.Tests.csproj",
 			"ILSpy.ReadyToRun\\ILSpy.ReadyToRun.csproj",
+			"ILSpy.Deobfuscation\\ILSpy.Deobfuscation.csproj",
+			"ILSpy.Deobfuscation.Tests\\ILSpy.Deobfuscation.Tests.csproj",
 			"ILSpy.Tests.Windows\\ILSpy.Tests.Windows.csproj",
 			"ILSpy.Tests\\ILSpy.Tests.csproj",
 			"ILSpy\\ILSpy.csproj"
