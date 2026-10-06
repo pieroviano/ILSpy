@@ -85,7 +85,6 @@ public class GoToCommandTests
 		items[Resources.GoToImplementation].Should().Be(KeyGesture.Parse(OperatingSystem.IsMacOS() ? "Cmd+F12" : "Ctrl+F12"));
 		items[Resources.GoToBaseSymbols].Should().Be(KeyGesture.Parse("Alt+Home"));
 		items[Resources.GoToDerivedSymbols].Should().Be(KeyGesture.Parse("Alt+End"));
-		items[Resources.LocateInAssemblyExplorer].Should().Be(KeyGesture.Parse("Shift+Alt+L"));
 		items[Resources.Analyze].Should().Be(KeyGesture.Parse("Shift+F12"));
 	}
 
@@ -135,6 +134,19 @@ public class GoToCommandTests
 	}
 
 	[AvaloniaTest]
+	public async Task Caret_Context_Ignores_Hover_Only_References()
+	{
+		var (_, _, view) = await CaretOnBaseTypeReferenceAsync();
+		var tab = (DecompilerTabPageModel)view.DataContext!;
+		var offset = view.Editor.TextArea.Caret.Offset;
+		// Tooltip-only segments (synthesized dynamic members) are not navigation targets.
+		foreach (var segment in tab.References!.FindSegmentsContaining(offset))
+			segment.Kind = ReferenceMode.HoverOnly;
+
+		ActiveNavigationContext.ForTextViewCaret(view).Reference.Should().BeNull();
+	}
+
+	[AvaloniaTest]
 	public async Task Navigate_To_Lists_Visible_Navigation_Entries_And_Runs_The_Chosen_One()
 	{
 		var (_, vm, _) = await CaretOnBaseTypeReferenceAsync();
@@ -149,7 +161,7 @@ public class GoToCommandTests
 		var texts = chooser!.VisibleChoices.Select(c => c.Text).ToList();
 		texts.Should().Contain(new[] {
 			Resources.GoToDeclaration, Resources.GoToImplementation, Resources.GoToDerivedSymbols,
-			Resources.GoToBaseSymbols, Resources.LocateInAssemblyExplorer, Resources.Decompile });
+			Resources.GoToBaseSymbols, Resources.Decompile });
 		texts.Should().NotContain(Resources.Analyze, "only Navigation-category entries are offered");
 
 		chooser.Filter = Resources.GoToDeclaration;
@@ -158,37 +170,6 @@ public class GoToCommandTests
 		Dispatcher.UIThread.RunJobs();
 
 		GoToFixture.Describe(((IMemberTreeNode)vm.AssemblyTreeModel.SelectedItem!).Member!).Should().Be("ShapeBase");
-	}
-
-	[AvaloniaTest]
-	public async Task Locate_In_Assembly_Explorer_Selects_The_Caret_Symbol_Node()
-	{
-		var (_, vm, view) = await CaretOnBaseTypeReferenceAsync();
-		var entry = AppComposition.Current.GetExport<ContextMenuEntryRegistry>().GetEntry(nameof(Resources.LocateInAssemblyExplorer));
-		var context = ActiveNavigationContext.ForTextViewCaret(view);
-
-		entry.IsVisible(context).Should().BeTrue();
-		entry.Execute(context);
-		Dispatcher.UIThread.RunJobs();
-
-		GoToFixture.Describe(((IMemberTreeNode)vm.AssemblyTreeModel.SelectedItem!).Member!).Should().Be("ShapeBase");
-	}
-
-	[AvaloniaTest]
-	public async Task Locate_In_Assembly_Explorer_Falls_Back_To_The_Document_Node()
-	{
-		var (_, vm, view) = await CaretOnBaseTypeReferenceAsync();
-		var entry = AppComposition.Current.GetExport<ContextMenuEntryRegistry>().GetEntry(nameof(Resources.LocateInAssemblyExplorer));
-		var circle = GoToFixture.TypeNode(vm, "Circle");
-		// The document's node is no longer selected (e.g. the user browsed the tree while keeping the tab).
-		vm.AssemblyTreeModel.SelectedItems.Clear();
-		var context = new TextViewContext { TextView = view };
-
-		entry.IsVisible(context).Should().BeTrue();
-		entry.Execute(context);
-		Dispatcher.UIThread.RunJobs();
-
-		ReferenceEquals(vm.AssemblyTreeModel.SelectedItem, circle).Should().BeTrue();
 	}
 
 	[AvaloniaTest]

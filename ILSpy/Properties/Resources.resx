@@ -744,9 +744,6 @@ Are you sure you want to continue?</value>
   <data name="FileStructure" xml:space="preserve">
     <value>File Structure</value>
   </data>
-  <data name="FindUsagesForRename" xml:space="preserve">
-    <value>Find Usages for Rename</value>
-  </data>
   <data name="Folding" xml:space="preserve">
     <value>Folding</value>
   </data>
@@ -851,9 +848,6 @@ Are you sure you want to continue?</value>
   </data>
   <data name="Loading" xml:space="preserve">
     <value>Loading...</value>
-  </data>
-  <data name="LocateInAssemblyExplorer" xml:space="preserve">
-    <value>Locate in Assembly Explorer</value>
   </data>
   <data name="Location" xml:space="preserve">
     <value>Location</value>

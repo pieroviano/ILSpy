@@ -31,7 +31,7 @@ namespace ICSharpCode.ILSpyX.Analyzers.Builtin
 	/// type or member whose signature, base types, attributes or body uses a type or member of the
 	/// analyzed assembly. Results are grouped by referencing assembly (assemblies in list order).
 	/// </summary>
-	[ExportAnalyzer(Header = ModuleAnalyzerHeaders.DependentCode, Order = 20)]
+	[ExportAnalyzer(Header = "Dependent Code", Order = 20)]
 	[Shared]
 	class ModuleDependentCodeAnalyzer : IAnalyzer
 	{

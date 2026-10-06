@@ -91,6 +91,22 @@ public class ModuleAnalyzersTests
 	}
 
 	[Test]
+	public void Dependent_Code_Lists_Attribute_Users_Through_Parameters_And_Arguments()
+	{
+		var names = new ModuleDependentCodeAnalyzer().Analyze(LibraryModule(), CreateContext())
+			.OfType<IEntity>().Select(e => e.FullName).ToList();
+
+		names.Should().Contain($"{consumerName}.{DependencyFixtures.ParameterAttributeUserType}.{DependencyFixtures.ParameterAttributeUserMethod}",
+			"a library attribute on a parameter is reported as its method");
+		names.Should().Contain($"{consumerName}.{DependencyFixtures.TypeofArgumentUserType}",
+			"typeof(library type) in an attribute argument is a dependency");
+		names.Should().Contain($"{consumerName}.{DependencyFixtures.BoxedEnumArgumentUserType}",
+			"a boxed library enum in an attribute argument is a dependency");
+		names.Should().Contain($"{consumerName}.{DependencyFixtures.EnumArgumentUserType}",
+			"a library enum in an attribute argument is a dependency");
+	}
+
+	[Test]
 	public void Dependent_Code_Honours_Cancellation()
 	{
 		using var cts = new CancellationTokenSource();

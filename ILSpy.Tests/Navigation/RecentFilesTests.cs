@@ -131,7 +131,6 @@ public class RecentFilesTests
 
 		Bound(Key.OemComma, KeyModifiers.Control).Should().BeTrue("Recent Files is Ctrl+Comma");
 		Bound(Key.OemComma, KeyModifiers.Control | KeyModifiers.Shift).Should().BeTrue("Recent Locations is Ctrl+Shift+Comma");
-		Bound(Key.F2, KeyModifiers.None).Should().BeTrue("Find Usages for Rename is F2");
 		Bound(Key.G, KeyModifiers.Control).Should().BeFalse(
 			"Ctrl+G is Go to Line only inside the code view; metadata grids use it for Go to token");
 	}

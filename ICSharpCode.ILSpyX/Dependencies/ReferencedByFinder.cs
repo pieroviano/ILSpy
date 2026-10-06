@@ -82,10 +82,10 @@ namespace ICSharpCode.ILSpyX.Dependencies
 					continue;
 				foreach (var reference in module.AssemblyReferences)
 				{
-					if (AssemblyReferenceMatcher.Matches(reference, target))
+					if (reference.IsReferenceTo(target.Metadata))
 					{
 						results.Add(new ReferencingAssembly(candidate, module, reference,
-							AssemblyReferenceMatcher.IsVersionMismatch(reference, target)));
+							reference.IsVersionMismatch(target.Metadata)));
 						break;
 					}
 				}

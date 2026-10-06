@@ -112,7 +112,7 @@ namespace ICSharpCode.ILSpy.Options
 		bool highlightMemberReferences;
 
 		[ObservableProperty]
-		bool highlightUsagesAtCaret = true;
+		bool highlightUsagesAtCaret;
 
 		public XName SectionName => "DisplaySettings";
 
@@ -143,7 +143,7 @@ namespace ICSharpCode.ILSpy.Options
 			DecodeCustomAttributeBlobs = (bool?)section.Attribute(nameof(DecodeCustomAttributeBlobs)) ?? false;
 			EnableOmnibar = (bool?)section.Attribute(nameof(EnableOmnibar)) ?? false;
 			HighlightMemberReferences = (bool?)section.Attribute(nameof(HighlightMemberReferences)) ?? false;
-			HighlightUsagesAtCaret = (bool?)section.Attribute(nameof(HighlightUsagesAtCaret)) ?? true;
+			HighlightUsagesAtCaret = (bool?)section.Attribute(nameof(HighlightUsagesAtCaret)) ?? false;
 		}
 
 		public XElement SaveToXml()

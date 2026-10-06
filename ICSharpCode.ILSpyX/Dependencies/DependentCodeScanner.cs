@@ -34,15 +34,17 @@ namespace ICSharpCode.ILSpyX.Dependencies
 	/// <summary>
 	/// Finds the code of one module that depends on another assembly: the types, methods, fields,
 	/// properties and events whose signatures, base types, interfaces, generic constraints, custom
-	/// attributes, locals or IL operands mention a type or member whose resolution scope is one of
-	/// a given set of assembly references. Works on raw metadata, so nothing is resolved across
-	/// assemblies and an unresolvable target still counts as a dependency.
+	/// attributes (including those on parameters, and the types named in their arguments), locals
+	/// or IL operands mention a type or member whose resolution scope is one of a given set of
+	/// assembly references. Works on raw metadata, so an unresolvable target still counts as a
+	/// dependency; only the underlying types of enums in attribute arguments are resolved.
 	/// </summary>
 	sealed class DependentCodeScanner : ISignatureTypeProvider<bool, object?>
 	{
 		readonly MetadataFile module;
 		readonly MetadataReader metadata;
 		readonly HashSet<AssemblyReferenceHandle> targetReferences;
+		readonly List<IAssemblyReference> targetIdentities;
 		readonly Dictionary<TypeReferenceHandle, bool> typeReferenceCache = new();
 		readonly Dictionary<TypeSpecificationHandle, bool> typeSpecificationCache = new();
 
@@ -51,16 +53,19 @@ namespace ICSharpCode.ILSpyX.Dependencies
 			this.module = module;
 			this.metadata = module.Metadata;
 			this.targetReferences = new HashSet<AssemblyReferenceHandle>(targetReferences);
+			this.targetIdentities = module.AssemblyReferences
+				.Where(r => this.targetReferences.Contains(r.Handle))
+				.ToList<IAssemblyReference>();
 		}
 
 		/// <summary>
 		/// The assembly references of <paramref name="module"/> that denote <paramref name="target"/>
-		/// (same name and public key token).
+		/// (same name, culture and public key token).
 		/// </summary>
 		public static IReadOnlyList<AssemblyReferenceHandle> FindReferencesTo(MetadataFile module, MetadataFile target)
 		{
 			return module.AssemblyReferences
-				.Where(r => AssemblyReferenceMatcher.Matches(r, target))
+				.Where(r => r.IsReferenceTo(target.Metadata))
 				.Select(r => r.Handle)
 				.ToList();
 		}
@@ -69,7 +74,7 @@ namespace ICSharpCode.ILSpyX.Dependencies
 		/// Entities of <paramref name="typeSystem"/>'s main module (which must be built over
 		/// <paramref name="module"/>) that depend on any of <paramref name="targetReferences"/>,
 		/// each reported once, in metadata order (types, then members, then attribute owners).
-		/// Accessors are reported as their owning property or event.
+		/// Accessors are reported as their owning property or event, parameters as their method.
 		/// </summary>
 		public static IEnumerable<ISymbol> FindDependentSymbols(MetadataFile module, DecompilerTypeSystem typeSystem,
 			IReadOnlyCollection<AssemblyReferenceHandle> targetReferences, CancellationToken cancellationToken)
@@ -132,16 +137,82 @@ namespace ICSharpCode.ILSpyX.Dependencies
 					yield return ev;
 			}
 
+			var argumentDecoder = new AttributeArgumentDecoder(this, mainModule);
+			var referencedParameters = new HashSet<ParameterHandle>();
 			foreach (var h in metadata.CustomAttributes)
 			{
 				ct.ThrowIfCancellationRequested();
 				var attribute = metadata.GetCustomAttribute(h);
-				if (!UsesTarget(attribute.Constructor))
+				if (!UsesTargetInAttributeConstructor(attribute.Constructor) && !UsesTargetInArguments(attribute, argumentDecoder))
 					continue;
+				if (attribute.Parent.Kind == HandleKind.Parameter)
+				{
+					referencedParameters.Add((ParameterHandle)attribute.Parent);
+					continue;
+				}
 				var parent = AnalyzerHelpers.GetParentEntity(typeSystem, attribute);
 				if (parent != null)
 					yield return parent;
 			}
+
+			if (referencedParameters.Count == 0)
+				yield break;
+			foreach (var h in metadata.MethodDefinitions)
+			{
+				ct.ThrowIfCancellationRequested();
+				if (metadata.GetMethodDefinition(h).GetParameters().Any(referencedParameters.Contains)
+					&& mainModule.GetDefinition(h) is { } method)
+				{
+					yield return method.AccessorOwner ?? method;
+				}
+			}
+		}
+
+		/// <summary>
+		/// True when the attribute constructor <paramref name="ctor"/> belongs to the target, or is a
+		/// constructor of this module whose signature mentions the target (e.g. an enum parameter).
+		/// </summary>
+		bool UsesTargetInAttributeConstructor(EntityHandle ctor)
+		{
+			if (ctor.Kind != HandleKind.MethodDefinition)
+				return UsesTarget(ctor);
+			var md = metadata.GetMethodDefinition((MethodDefinitionHandle)ctor);
+			return Safe(() => AnyInSignature(md.DecodeSignature(this, null)));
+		}
+
+		/// <summary>True when an argument of <paramref name="attribute"/> is or names a type of the target.</summary>
+		static bool UsesTargetInArguments(CustomAttribute attribute, AttributeArgumentDecoder decoder)
+		{
+			return Safe(() => {
+				var value = attribute.DecodeValue(decoder);
+				return value.FixedArguments.Any(IsTargetArgument)
+					|| value.NamedArguments.Any(a => IsTargetArgument(new(a.Type, a.Value)));
+			});
+
+			static bool IsTargetArgument(CustomAttributeTypedArgument<AttributeArgumentType> argument)
+				=> argument.Type.UsesTarget
+					|| argument.Value is AttributeArgumentType { UsesTarget: true }
+					|| (argument.Value is ImmutableArray<CustomAttributeTypedArgument<AttributeArgumentType>> elements
+						&& elements.Any(IsTargetArgument));
+		}
+
+		/// <summary>True when a parsed serialized type name names a type of the target, or is built from one.</summary>
+		bool IsTargetTypeName(TypeName name)
+		{
+			if (name.IsArray || name.IsPointer || name.IsByRef)
+				return IsTargetTypeName(name.GetElementType());
+			if (name.IsConstructedGenericType)
+				return IsTargetTypeName(name.GetGenericTypeDefinition()) || name.GetGenericArguments().Any(IsTargetTypeName);
+			if (name.AssemblyName is not { } assemblyName)
+				return false;
+			var parsed = assemblyName.ToAssemblyName();
+			return targetIdentities.Any(target =>
+				string.Equals(target.Name, parsed.Name, StringComparison.OrdinalIgnoreCase)
+				&& string.Equals(NormalizeCulture(target.Culture), NormalizeCulture(parsed.CultureName), StringComparison.OrdinalIgnoreCase)
+				&& (target.PublicKeyToken ?? []).AsSpan().SequenceEqual(parsed.GetPublicKeyToken() ?? []));
+
+			static string NormalizeCulture(string? culture)
+				=> string.IsNullOrEmpty(culture) || culture == "neutral" ? string.Empty : culture;
 		}
 
 		static bool Safe(Func<bool> check)
@@ -285,6 +356,62 @@ namespace ICSharpCode.ILSpyX.Dependencies
 			bool result = metadata.GetTypeSpecification(handle).DecodeSignature(this, null);
 			typeSpecificationCache[handle] = result;
 			return result;
+		}
+
+		/// <summary>
+		/// An attribute argument type as seen by <see cref="AttributeArgumentDecoder"/>: whether it
+		/// mentions the target, the underlying type when it is an enum, and whether it is System.Type.
+		/// </summary>
+		readonly record struct AttributeArgumentType(bool UsesTarget, PrimitiveTypeCode EnumUnderlyingType = 0, bool IsSystemType = false);
+
+		/// <summary>
+		/// Decodes custom attribute blobs into <see cref="AttributeArgumentType"/>s. Target detection
+		/// stays on raw metadata; enum underlying types, which the blob format requires, are resolved
+		/// through the type system.
+		/// </summary>
+		sealed class AttributeArgumentDecoder(DependentCodeScanner scanner, MetadataModule mainModule)
+			: ICustomAttributeTypeProvider<AttributeArgumentType>
+		{
+			public AttributeArgumentType GetPrimitiveType(PrimitiveTypeCode typeCode) => new(false);
+			public AttributeArgumentType GetSystemType() => new(false, IsSystemType: true);
+			public AttributeArgumentType GetSZArrayType(AttributeArgumentType elementType) => new(elementType.UsesTarget);
+			public bool IsSystemType(AttributeArgumentType type) => type.IsSystemType;
+
+			public AttributeArgumentType GetTypeFromDefinition(MetadataReader reader, TypeDefinitionHandle handle, byte rawTypeKind)
+			{
+				if (handle.IsEnum(reader, out PrimitiveTypeCode underlying))
+					return new(false, underlying);
+				return new(false, IsSystemType: ((EntityHandle)handle).IsKnownType(reader, KnownTypeCode.Type));
+			}
+
+			public AttributeArgumentType GetTypeFromReference(MetadataReader reader, TypeReferenceHandle handle, byte rawTypeKind)
+			{
+				if (((EntityHandle)handle).IsKnownType(reader, KnownTypeCode.Type))
+					return new(false, IsSystemType: true);
+				return new(scanner.IsTargetTypeReference(handle), EnumUnderlyingTypeOf(mainModule.ResolveType(handle, default)));
+			}
+
+			public AttributeArgumentType GetTypeFromSerializedName(string name)
+			{
+				if (!TypeName.TryParse(name.AsSpan(), out var parsed))
+					return new(false);
+				IType? type;
+				try
+				{
+					type = ReflectionHelper.ParseReflectionName(name, new SimpleTypeResolveContext(mainModule));
+				}
+				catch (ReflectionNameParseException)
+				{
+					type = null;
+				}
+				return new(scanner.IsTargetTypeName(parsed), EnumUnderlyingTypeOf(type));
+			}
+
+			public PrimitiveTypeCode GetUnderlyingEnumType(AttributeArgumentType type)
+				=> type.EnumUnderlyingType != 0 ? type.EnumUnderlyingType : throw new EnumUnderlyingTypeResolveException();
+
+			static PrimitiveTypeCode EnumUnderlyingTypeOf(IType? type)
+				=> type?.GetDefinition()?.EnumUnderlyingType?.GetDefinition()?.KnownTypeCode.ToPrimitiveTypeCode() ?? 0;
 		}
 
 		#region ISignatureTypeProvider

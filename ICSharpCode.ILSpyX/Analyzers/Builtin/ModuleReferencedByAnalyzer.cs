@@ -31,7 +31,7 @@ namespace ICSharpCode.ILSpyX.Analyzers.Builtin
 	/// token; the referenced version may differ). Each result is itself a module, so it can be
 	/// expanded to follow the chain of referencing assemblies further.
 	/// </summary>
-	[ExportAnalyzer(Header = ModuleAnalyzerHeaders.ReferencedBy, Order = 10)]
+	[ExportAnalyzer(Header = "Referenced By", Order = 10)]
 	[Shared]
 	class ModuleReferencedByAnalyzer : IAnalyzer
 	{

@@ -208,7 +208,7 @@ namespace ICSharpCode.ILSpyX.Dependencies
 							if (transitive)
 								queue.Enqueue((resolved, target, root));
 						}
-						mismatch = AssemblyReferenceMatcher.IsVersionMismatch(reference, resolved);
+						mismatch = reference.IsVersionMismatch(resolved.Metadata);
 					}
 					else
 					{
@@ -232,10 +232,10 @@ namespace ICSharpCode.ILSpyX.Dependencies
 			{
 				int index = nodes.Count;
 				var metadata = file.Metadata;
-				string name = AssemblyReferenceMatcher.GetAssemblyName(metadata) ?? file.Name;
+				string name = metadata.IsAssembly ? metadata.GetString(metadata.GetAssemblyDefinition().Name) : file.Name;
 				string fullName = metadata.IsAssembly ? file.FullName : file.Name;
-				nodes.Add(new AssemblyDependencyNode(index, name, fullName,
-					AssemblyReferenceMatcher.GetAssemblyVersion(metadata), file, isRoot));
+				var version = metadata.IsAssembly ? metadata.GetAssemblyDefinition().Version : null;
+				nodes.Add(new AssemblyDependencyNode(index, name, fullName, version, file, isRoot));
 				byKey.Add(FileKey(file), index);
 				return index;
 			}

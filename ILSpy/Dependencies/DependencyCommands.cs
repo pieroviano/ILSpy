@@ -20,7 +20,6 @@ using System.Composition;
 using System.Linq;
 
 using ICSharpCode.Decompiler.TypeSystem;
-using ICSharpCode.ILSpyX.Analyzers;
 using ICSharpCode.ILSpyX.TreeView;
 
 using ICSharpCode.ILSpy.Analyzers;
@@ -96,14 +95,18 @@ namespace ICSharpCode.ILSpy.Dependencies
 	[method: ImportingConstructor]
 	public sealed class ReferencedByContextMenuEntry(AnalyzerTreeViewModel analyzerTreeViewModel, DockWorkspace dockWorkspace) : IContextMenuEntry
 	{
+		/// <summary>Header of the module analyzer this entry opens.</summary>
+		public const string AnalyzerHeader = "Referenced By";
+
 		public bool IsVisible(TextViewContext context) => DependencyMenuHelpers.IsModuleSelection(context);
 
-		public bool IsEnabled(TextViewContext context) => true;
+		// An assembly reference that does not resolve to a loaded assembly has nothing to analyze.
+		public bool IsEnabled(TextViewContext context) => DependencyMenuHelpers.GetModule(context) != null;
 
 		public void Execute(TextViewContext context)
 		{
 			if (DependencyMenuHelpers.GetModule(context) is { } module)
-				DependencyMenuHelpers.AnalyzeWith(module, ModuleAnalyzerHeaders.ReferencedBy, analyzerTreeViewModel, dockWorkspace);
+				DependencyMenuHelpers.AnalyzeWith(module, AnalyzerHeader, analyzerTreeViewModel, dockWorkspace);
 		}
 	}
 
@@ -113,14 +116,18 @@ namespace ICSharpCode.ILSpy.Dependencies
 	[method: ImportingConstructor]
 	public sealed class DependentCodeContextMenuEntry(AnalyzerTreeViewModel analyzerTreeViewModel, DockWorkspace dockWorkspace) : IContextMenuEntry
 	{
+		/// <summary>Header of the module analyzer this entry opens.</summary>
+		public const string AnalyzerHeader = "Dependent Code";
+
 		public bool IsVisible(TextViewContext context) => DependencyMenuHelpers.IsModuleSelection(context);
 
-		public bool IsEnabled(TextViewContext context) => true;
+		// An assembly reference that does not resolve to a loaded assembly has nothing to analyze.
+		public bool IsEnabled(TextViewContext context) => DependencyMenuHelpers.GetModule(context) != null;
 
 		public void Execute(TextViewContext context)
 		{
 			if (DependencyMenuHelpers.GetModule(context) is { } module)
-				DependencyMenuHelpers.AnalyzeWith(module, ModuleAnalyzerHeaders.DependentCode, analyzerTreeViewModel, dockWorkspace);
+				DependencyMenuHelpers.AnalyzeWith(module, AnalyzerHeader, analyzerTreeViewModel, dockWorkspace);
 		}
 	}
 
