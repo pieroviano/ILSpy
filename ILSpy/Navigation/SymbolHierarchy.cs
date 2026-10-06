@@ -108,7 +108,11 @@ namespace ICSharpCode.ILSpy.Navigation
 		public static IReadOnlyList<IEntity> FindBaseSymbols(IEntity entity)
 		{
 			IEnumerable<IEntity> candidates = entity switch {
-				ITypeDefinition type => type.DirectBaseTypes.Select(t => t.GetDefinition()).OfType<IEntity>(),
+				// The type system reports System.Object as a base of every interface; an interface's
+				// base symbols are only the interfaces it extends.
+				ITypeDefinition type => type.DirectBaseTypes.Select(t => t.GetDefinition())
+					.Where(d => d != null && (type.Kind != TypeKind.Interface || d.Kind == TypeKind.Interface))
+					.OfType<IEntity>(),
 				IMember member when IsInheritableMember(member)
 					=> InheritanceHelper.GetBaseMembers(member, includeImplementedInterfaces: true).Select(m => m.MemberDefinition),
 				_ => Enumerable.Empty<IEntity>(),

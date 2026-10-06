@@ -21,8 +21,6 @@ using System.Composition;
 using ICSharpCode.Decompiler.TypeSystem;
 using ICSharpCode.ILSpy.Properties;
 
-using ICSharpCode.ILSpy.AssemblyTree;
-using ICSharpCode.ILSpy.Docking;
 using ICSharpCode.ILSpy.TextView;
 using ICSharpCode.ILSpy.TreeNodes;
 
@@ -96,61 +94,5 @@ namespace ICSharpCode.ILSpy.Navigation
 	public sealed class GoToDerivedSymbolsContextMenuEntry(GoToNavigator navigator) : GoToContextMenuEntry(navigator)
 	{
 		protected override GoToKind Kind => GoToKind.DerivedSymbols;
-	}
-
-	/// <summary>
-	/// Selects and reveals, in the assembly tree, the node of the symbol under the caret or, when
-	/// the caret is not on a symbol, the node the document was decompiled from.
-	/// </summary>
-	[ExportContextMenuEntry(Header = nameof(Resources.LocateInAssemblyExplorer), Category = GoToContextMenuEntry.NavigationCategory, Order = 160, InputGestureText = "Shift+Alt+L")]
-	[Shared]
-	[method: ImportingConstructor]
-	public sealed class LocateInAssemblyExplorerContextMenuEntry(
-		AssemblyTreeModel assemblyTreeModel,
-		DockWorkspace dockWorkspace,
-		GoToNavigator navigator) : IContextMenuEntry
-	{
-		public bool IsVisible(TextViewContext context)
-			=> context.TextView != null
-				&& (context.Reference?.Reference is IEntity || DocumentOf(context)?.CurrentNode != null);
-
-		public bool IsEnabled(TextViewContext context) => true;
-
-		public void Execute(TextViewContext context) => Locate(context);
-
-		/// <summary>Runs the locate action; returns false (after showing a notice) when there is nothing to locate.</summary>
-		public bool Locate(TextViewContext context)
-		{
-			var anchor = ActiveNavigationContext.AnchorOf(context);
-			ILSpyTreeNode? node;
-			if (context.Reference?.Reference is IEntity entity)
-			{
-				node = assemblyTreeModel.FindTreeNode(entity);
-				if (node == null)
-				{
-					navigator.ShowNotice($"{navigator.Describe(entity)} is not in the assembly list", anchor);
-					return false;
-				}
-			}
-			else
-			{
-				node = DocumentOf(context)?.CurrentNode;
-				if (node == null)
-				{
-					navigator.ShowNotice("Nothing to locate in the assembly explorer", anchor);
-					return false;
-				}
-			}
-			assemblyTreeModel.SelectNode(node);
-			dockWorkspace.ShowToolPane(AssemblyTreeModel.PaneContentId);
-			return true;
-		}
-
-		// The document shown by the context's text view, or the active decompiler tab when the
-		// context does not come from a text view.
-		DecompilerTabPageModel? DocumentOf(TextViewContext context)
-			=> context.TextView != null
-				? context.TextView.DataContext as DecompilerTabPageModel
-				: dockWorkspace.ActiveDecompilerTab;
 	}
 }

@@ -67,18 +67,18 @@ public class CaretUsageHighlightTests
 			.ToList();
 
 	[Test]
-	public void Setting_Defaults_To_On_And_Round_Trips()
+	public void Setting_Defaults_To_Off_And_Round_Trips()
 	{
-		new DisplaySettings().HighlightUsagesAtCaret.Should().BeTrue();
+		new DisplaySettings().HighlightUsagesAtCaret.Should().BeFalse();
 
 		var loaded = new DisplaySettings();
 		loaded.LoadFromXml(new XElement("DisplaySettings"));
-		loaded.HighlightUsagesAtCaret.Should().BeTrue("a missing attribute keeps the default");
+		loaded.HighlightUsagesAtCaret.Should().BeFalse("a missing attribute keeps the default");
 
-		var off = new DisplaySettings { HighlightUsagesAtCaret = false };
+		var on = new DisplaySettings { HighlightUsagesAtCaret = true };
 		var reloaded = new DisplaySettings();
-		reloaded.LoadFromXml(off.SaveToXml());
-		reloaded.HighlightUsagesAtCaret.Should().BeFalse();
+		reloaded.LoadFromXml(on.SaveToXml());
+		reloaded.HighlightUsagesAtCaret.Should().BeTrue();
 	}
 
 	[AvaloniaTest]

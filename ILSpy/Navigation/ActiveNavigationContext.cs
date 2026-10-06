@@ -90,9 +90,11 @@ namespace ICSharpCode.ILSpy.Navigation
 			ReferenceSegment? segment = null;
 			if (view.DataContext is DecompilerTabPageModel { References: { } references })
 			{
-				// A caret placed just after an identifier still counts as being on it.
-				segment = references.FindSegmentsContaining(offset).FirstOrDefault(r => r.Reference != null)
-					?? (offset > 0 ? references.FindSegmentsContaining(offset - 1).FirstOrDefault(r => r.Reference != null) : null);
+				// A caret placed just after an identifier still counts as being on it. Hover-only
+				// segments carry a tooltip but nothing to navigate to, like for a mouse click.
+				static bool IsTarget(ReferenceSegment r) => r.Reference != null && r.Kind != ReferenceMode.HoverOnly;
+				segment = references.FindSegmentsContaining(offset).FirstOrDefault(IsTarget)
+					?? (offset > 0 ? references.FindSegmentsContaining(offset - 1).FirstOrDefault(IsTarget) : null);
 			}
 			return new TextViewContext {
 				TextView = view,

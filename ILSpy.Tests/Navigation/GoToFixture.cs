@@ -38,6 +38,8 @@ namespace ICSharpCode.ILSpy.Tests;
 /// class Circle : ShapeBase { public override double Area(); }
 /// class Square : ShapeBase { public override double Area(); }
 /// class Lonely { public void Solo(); }
+/// interface INamed { }
+/// interface ILabeled : INamed { }
 /// </code>
 /// </summary>
 public static class GoToFixture
@@ -75,6 +77,14 @@ public static class GoToFixture
 			typeof(void), Type.EmptyTypes);
 		solo.GetILGenerator().Emit(OpCodes.Ret);
 		lonely.CreateType();
+
+		var named = module.DefineType($"{Name}.INamed",
+			TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract);
+		named.CreateType();
+		var labeled = module.DefineType($"{Name}.ILabeled",
+			TypeAttributes.Public | TypeAttributes.Interface | TypeAttributes.Abstract);
+		labeled.AddInterfaceImplementation(named);
+		labeled.CreateType();
 
 		var dir = Path.Combine(Path.GetTempPath(), $"ILSpyGoToFixture_{Guid.NewGuid():N}");
 		Directory.CreateDirectory(dir);

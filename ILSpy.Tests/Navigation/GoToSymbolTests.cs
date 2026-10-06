@@ -91,6 +91,16 @@ public class GoToSymbolTests
 	}
 
 	[AvaloniaTest]
+	public async Task Base_Symbols_Of_An_Interface_Are_Only_Its_Base_Interfaces()
+	{
+		var vm = await BootWithFixtureAsync();
+		Find(vm, GoToKind.BaseSymbols, GoToFixture.TypeDef(vm, "ILabeled")).Should().Equal("INamed");
+		Find(vm, GoToKind.BaseSymbols, GoToFixture.TypeDef(vm, "INamed")).Should().BeEmpty(
+			"the System.Object base the type system reports for interfaces is not a base symbol");
+		SymbolHierarchy.IsApplicable(GoToKind.BaseSymbols, GoToFixture.TypeDef(vm, "INamed")).Should().BeFalse();
+	}
+
+	[AvaloniaTest]
 	public async Task Hierarchy_Entries_Are_Hidden_For_Symbols_That_Cannot_Have_Inheritors()
 	{
 		var vm = await BootWithFixtureAsync();
@@ -112,8 +122,7 @@ public class GoToSymbolTests
 		var registry = AppComposition.Current.GetExport<ContextMenuEntryRegistry>();
 		foreach (var header in new[] {
 			nameof(Resources.GoToDeclaration), nameof(Resources.GoToImplementation),
-			nameof(Resources.GoToBaseSymbols), nameof(Resources.GoToDerivedSymbols),
-			nameof(Resources.LocateInAssemblyExplorer) })
+			nameof(Resources.GoToBaseSymbols), nameof(Resources.GoToDerivedSymbols) })
 		{
 			registry.Entries.Single(e => e.Metadata.Header == header).Metadata.Category
 				.Should().Be("Navigation", $"{header} must surface in the Navigate To popup");

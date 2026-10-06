@@ -150,29 +150,6 @@ namespace ICSharpCode.ILSpy.Navigation
 		}
 	}
 
-	[ExportMainMenuCommand(ParentMenuID = nameof(Resources._Navigate), Header = nameof(Resources.LocateInAssemblyExplorer), MenuCategory = "Locate", MenuOrder = 20, InputGestureText = "Shift+Alt+L")]
-	[Shared]
-	sealed class LocateInAssemblyExplorerCommand : SimpleCommand
-	{
-		readonly AssemblyTreeModel assemblyTreeModel;
-		readonly LocateInAssemblyExplorerContextMenuEntry locate;
-
-		[ImportingConstructor]
-		public LocateInAssemblyExplorerCommand(AssemblyTreeModel assemblyTreeModel, DockWorkspace dockWorkspace, GoToNavigator navigator)
-		{
-			this.assemblyTreeModel = assemblyTreeModel;
-			locate = new LocateInAssemblyExplorerContextMenuEntry(assemblyTreeModel, dockWorkspace, navigator);
-			ActiveNavigationContext.EnsureFocusTracking();
-		}
-
-		// From the tree the selection is not passed on: locating works on the active document.
-		public override void Execute(object? parameter)
-		{
-			var context = ActiveNavigationContext.Current(assemblyTreeModel);
-			locate.Locate(context.TextView != null ? context : new TextViewContext());
-		}
-	}
-
 	/// <summary>Find Usages: analyzes the current symbol, like the Analyze context-menu entry.</summary>
 	[ExportMainMenuCommand(ParentMenuID = nameof(Resources._Navigate), Header = nameof(Resources.Analyze), MenuCategory = "Analyze", MenuOrder = 30, InputGestureText = "Shift+F12")]
 	[Shared]
