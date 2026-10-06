@@ -26,9 +26,12 @@ namespace ICSharpCode.ILSpy.Tests.Dependencies;
 
 /// <summary>
 /// Emits small library/consumer assembly pairs for the dependency features. The library defines
-/// <c>Api.Compute(int)</c> and <c>Model</c>; the consumer uses them in a method body
-/// (<see cref="BodyUserType"/>), in a signature (<see cref="SignatureUserType"/>) and as a base
-/// type (<see cref="DerivedType"/>), and has one type that does not touch the library at all
+/// <c>Api.Compute(int)</c>, <c>Model</c>, <c>LibAttribute</c> and the enum <c>Mode</c>; the consumer
+/// uses them in a method body (<see cref="BodyUserType"/>), in a signature
+/// (<see cref="SignatureUserType"/>), as a base type (<see cref="DerivedType"/>), as an attribute
+/// on a parameter (<see cref="ParameterAttributeUserType"/>) and inside the arguments of its own
+/// attribute (<see cref="TypeofArgumentUserType"/>, <see cref="BoxedEnumArgumentUserType"/>,
+/// <see cref="EnumArgumentUserType"/>), and has one type that does not touch the library at all
 /// (<see cref="IndependentType"/>).
 /// </summary>
 static class DependencyFixtures
@@ -40,6 +43,11 @@ static class DependencyFixtures
 	public const string DerivedType = "DerivedModel";
 	public const string IndependentType = "Independent";
 	public const string IndependentMethod = "Twice";
+	public const string ParameterAttributeUserType = "UsesOnParameter";
+	public const string ParameterAttributeUserMethod = "Take";
+	public const string TypeofArgumentUserType = "UsesInTypeofArgument";
+	public const string BoxedEnumArgumentUserType = "UsesInBoxedArgument";
+	public const string EnumArgumentUserType = "UsesInEnumArgument";
 
 	/// <summary>A fresh, empty temp directory.</summary>
 	public static string NewDirectory()
@@ -70,6 +78,15 @@ static class DependencyFixtures
 		model.DefineDefaultConstructor(MethodAttributes.Public);
 		model.CreateType();
 
+		var attribute = module.DefineType($"{name}.LibAttribute", TypeAttributes.Public | TypeAttributes.Class, typeof(Attribute));
+		attribute.DefineDefaultConstructor(MethodAttributes.Public);
+		attribute.CreateType();
+
+		var mode = module.DefineEnum($"{name}.Mode", TypeAttributes.Public, typeof(int));
+		mode.DefineLiteral("A", 0);
+		mode.DefineLiteral("B", 1);
+		mode.CreateType();
+
 		var path = Path.Combine(directory, name + ".dll");
 		ab.Save(path);
 		return path;
@@ -90,6 +107,8 @@ static class DependencyFixtures
 			string libraryName = library.GetName().Name!;
 			var apiType = library.GetType($"{libraryName}.Api", throwOnError: true)!;
 			var modelType = library.GetType($"{libraryName}.Model", throwOnError: true)!;
+			var attributeType = library.GetType($"{libraryName}.LibAttribute", throwOnError: true)!;
+			var modeType = library.GetType($"{libraryName}.Mode", throwOnError: true)!;
 
 			var ab = new PersistedAssemblyBuilder(new AssemblyName(name) { Version = new Version(1, 0, 0, 0) }, typeof(object).Assembly);
 			var module = ab.DefineDynamicModule(name);
@@ -120,6 +139,40 @@ static class DependencyFixtures
 			il.Emit(OpCodes.Add);
 			il.Emit(OpCodes.Ret);
 			independent.CreateType();
+
+			var parameterUser = module.DefineType($"{name}.{ParameterAttributeUserType}", TypeAttributes.Public | TypeAttributes.Class);
+			var take = parameterUser.DefineMethod(ParameterAttributeUserMethod, MethodAttributes.Public | MethodAttributes.Static, typeof(void), [typeof(int)]);
+			take.DefineParameter(1, ParameterAttributes.None, "x")
+				.SetCustomAttribute(new CustomAttributeBuilder(attributeType.GetConstructor(Type.EmptyTypes)!, []));
+			take.GetILGenerator().Emit(OpCodes.Ret);
+			parameterUser.CreateType();
+
+			// A local attribute whose constructors take a System.Type, an object or a library enum.
+			var local = module.DefineType($"{name}.LocalAttribute", TypeAttributes.Public | TypeAttributes.Class, typeof(Attribute));
+			var baseCtor = typeof(Attribute).GetConstructor(BindingFlags.NonPublic | BindingFlags.Instance, Type.EmptyTypes)!;
+			ConstructorBuilder DefineLocalCtor(Type parameterType)
+			{
+				var ctor = local.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, [parameterType]);
+				var ctorIL = ctor.GetILGenerator();
+				ctorIL.Emit(OpCodes.Ldarg_0);
+				ctorIL.Emit(OpCodes.Call, baseCtor);
+				ctorIL.Emit(OpCodes.Ret);
+				return ctor;
+			}
+			var typeCtor = DefineLocalCtor(typeof(Type));
+			var objectCtor = DefineLocalCtor(typeof(object));
+			var enumCtor = DefineLocalCtor(modeType);
+			local.CreateType();
+
+			void DefineAttributedType(string typeName, ConstructorInfo ctor, object argument)
+			{
+				var type = module.DefineType($"{name}.{typeName}", TypeAttributes.Public | TypeAttributes.Class);
+				type.SetCustomAttribute(new CustomAttributeBuilder(ctor, [argument]));
+				type.CreateType();
+			}
+			DefineAttributedType(TypeofArgumentUserType, typeCtor, modelType);
+			DefineAttributedType(BoxedEnumArgumentUserType, objectCtor, Enum.ToObject(modeType, 1));
+			DefineAttributedType(EnumArgumentUserType, enumCtor, Enum.ToObject(modeType, 1));
 
 			var path = Path.Combine(directory, name + ".dll");
 			ab.Save(path);

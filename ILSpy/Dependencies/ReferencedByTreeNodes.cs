@@ -100,7 +100,8 @@ namespace ICSharpCode.ILSpy.Dependencies
 		public override object Text {
 			get {
 				var name = ILAmbience.EscapeName(referencing.Assembly.ShortName);
-				var version = AssemblyReferenceMatcher.GetAssemblyVersion(referencing.Module.Metadata);
+				var metadata = referencing.Module.Metadata;
+				var version = metadata.IsAssembly ? metadata.GetAssemblyDefinition().Version : null;
 				var text = version != null ? $"{name} ({version})" : name;
 				if (referencing.IsVersionMismatch)
 					text += $" - references v{referencing.Reference.Version}";

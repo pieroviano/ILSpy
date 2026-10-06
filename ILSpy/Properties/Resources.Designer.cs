@@ -151,6 +151,15 @@ namespace ICSharpCode.ILSpy.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to _Navigate.
+        /// </summary>
+        public static string _Navigate {
+            get {
+                return ResourceManager.GetString("_Navigate", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to _New.
         /// </summary>
         public static string _New {
@@ -392,6 +401,15 @@ namespace ICSharpCode.ILSpy.Properties {
         public static string Assembly {
             get {
                 return ResourceManager.GetString("Assembly", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show Assembly Dependency Diagram.
+        /// </summary>
+        public static string AssemblyDependencyDiagram {
+            get {
+                return ResourceManager.GetString("AssemblyDependencyDiagram", resourceCulture);
             }
         }
         
@@ -1948,6 +1966,15 @@ namespace ICSharpCode.ILSpy.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Dependent Code.
+        /// </summary>
+        public static string DependentCode {
+            get {
+                return ResourceManager.GetString("DependentCode", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Derived Types.
         /// </summary>
         public static string DerivedTypes {
@@ -2083,6 +2110,15 @@ namespace ICSharpCode.ILSpy.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Export Dependency Diagram (Mermaid HTML)....
+        /// </summary>
+        public static string ExportDependencyDiagramMermaid {
+            get {
+                return ResourceManager.GetString("ExportDependencyDiagramMermaid", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Extract all package entries.
         /// </summary>
         public static string ExtractAllPackageEntries {
@@ -2097,6 +2133,15 @@ namespace ICSharpCode.ILSpy.Properties {
         public static string ExtractPackageEntry {
             get {
                 return ResourceManager.GetString("ExtractPackageEntry", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to File Structure.
+        /// </summary>
+        public static string FileStructure {
+            get {
+                return ResourceManager.GetString("FileStructure", resourceCulture);
             }
         }
         
@@ -2191,6 +2236,60 @@ namespace ICSharpCode.ILSpy.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Go to Base Symbols.
+        /// </summary>
+        public static string GoToBaseSymbols {
+            get {
+                return ResourceManager.GetString("GoToBaseSymbols", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Go to Declaration.
+        /// </summary>
+        public static string GoToDeclaration {
+            get {
+                return ResourceManager.GetString("GoToDeclaration", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Go to Derived Symbols.
+        /// </summary>
+        public static string GoToDerivedSymbols {
+            get {
+                return ResourceManager.GetString("GoToDerivedSymbols", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Go to File Member....
+        /// </summary>
+        public static string GoToFileMember {
+            get {
+                return ResourceManager.GetString("GoToFileMember", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Go to Implementation.
+        /// </summary>
+        public static string GoToImplementation {
+            get {
+                return ResourceManager.GetString("GoToImplementation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Go to Line....
+        /// </summary>
+        public static string GoToLine {
+            get {
+                return ResourceManager.GetString("GoToLine", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Go to token.
         /// </summary>
         public static string GoToToken {
@@ -2232,6 +2331,15 @@ namespace ICSharpCode.ILSpy.Properties {
         public static string HighlightMemberReferences {
             get {
                 return ResourceManager.GetString("HighlightMemberReferences", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Highlight usages of the symbol under the caret.
+        /// </summary>
+        public static string HighlightUsagesAtCaret {
+            get {
+                return ResourceManager.GetString("HighlightUsagesAtCaret", resourceCulture);
             }
         }
         
@@ -2394,6 +2502,15 @@ namespace ICSharpCode.ILSpy.Properties {
         public static string Name {
             get {
                 return ResourceManager.GetString("Name", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Navigate To....
+        /// </summary>
+        public static string NavigateTo {
+            get {
+                return ResourceManager.GetString("NavigateTo", resourceCulture);
             }
         }
         
@@ -2925,6 +3042,33 @@ namespace ICSharpCode.ILSpy.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Recent Files....
+        /// </summary>
+        public static string RecentFiles {
+            get {
+                return ResourceManager.GetString("RecentFiles", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Recent Locations....
+        /// </summary>
+        public static string RecentLocations {
+            get {
+                return ResourceManager.GetString("RecentLocations", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Referenced By.
+        /// </summary>
+        public static string ReferencedBy {
+            get {
+                return ResourceManager.GetString("ReferencedBy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Referenced Types.
         /// </summary>
         public static string ReferencedTypes {
@@ -3184,186 +3328,6 @@ namespace ICSharpCode.ILSpy.Properties {
         public static string SelectList {
             get {
                 return ResourceManager.GetString("SelectList", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to _Navigate.
-        /// </summary>
-        public static string _Navigate {
-            get {
-                return ResourceManager.GetString("_Navigate", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Navigate To....
-        /// </summary>
-        public static string NavigateTo {
-            get {
-                return ResourceManager.GetString("NavigateTo", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Go to Declaration.
-        /// </summary>
-        public static string GoToDeclaration {
-            get {
-                return ResourceManager.GetString("GoToDeclaration", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Go to Implementation.
-        /// </summary>
-        public static string GoToImplementation {
-            get {
-                return ResourceManager.GetString("GoToImplementation", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Go to Base Symbols.
-        /// </summary>
-        public static string GoToBaseSymbols {
-            get {
-                return ResourceManager.GetString("GoToBaseSymbols", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Go to Derived Symbols.
-        /// </summary>
-        public static string GoToDerivedSymbols {
-            get {
-                return ResourceManager.GetString("GoToDerivedSymbols", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Locate in Assembly Explorer.
-        /// </summary>
-        public static string LocateInAssemblyExplorer {
-            get {
-                return ResourceManager.GetString("LocateInAssemblyExplorer", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Type Hierarchy.
-        /// </summary>
-        public static string TypeHierarchy {
-            get {
-                return ResourceManager.GetString("TypeHierarchy", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to File Structure.
-        /// </summary>
-        public static string FileStructure {
-            get {
-                return ResourceManager.GetString("FileStructure", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Go to File Member....
-        /// </summary>
-        public static string GoToFileMember {
-            get {
-                return ResourceManager.GetString("GoToFileMember", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Recent Files....
-        /// </summary>
-        public static string RecentFiles {
-            get {
-                return ResourceManager.GetString("RecentFiles", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Recent Locations....
-        /// </summary>
-        public static string RecentLocations {
-            get {
-                return ResourceManager.GetString("RecentLocations", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Go to Line....
-        /// </summary>
-        public static string GoToLine {
-            get {
-                return ResourceManager.GetString("GoToLine", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Highlight usages of the symbol under the caret.
-        /// </summary>
-        public static string HighlightUsagesAtCaret {
-            get {
-                return ResourceManager.GetString("HighlightUsagesAtCaret", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Find Usages for Rename.
-        /// </summary>
-        public static string FindUsagesForRename {
-            get {
-                return ResourceManager.GetString("FindUsagesForRename", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Referenced By.
-        /// </summary>
-        public static string ReferencedBy {
-            get {
-                return ResourceManager.GetString("ReferencedBy", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Dependent Code.
-        /// </summary>
-        public static string DependentCode {
-            get {
-                return ResourceManager.GetString("DependentCode", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Show Assembly Dependency Diagram.
-        /// </summary>
-        public static string AssemblyDependencyDiagram {
-            get {
-                return ResourceManager.GetString("AssemblyDependencyDiagram", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Export Dependency Diagram (Mermaid HTML)....
-        /// </summary>
-        public static string ExportDependencyDiagramMermaid {
-            get {
-                return ResourceManager.GetString("ExportDependencyDiagramMermaid", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Unresolved References Report.
-        /// </summary>
-        public static string UnresolvedReferencesReport {
-            get {
-                return ResourceManager.GetString("UnresolvedReferencesReport", resourceCulture);
             }
         }
         
@@ -3719,6 +3683,15 @@ namespace ICSharpCode.ILSpy.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Type Hierarchy.
+        /// </summary>
+        public static string TypeHierarchy {
+            get {
+                return ResourceManager.GetString("TypeHierarchy", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to UI Language.
         /// </summary>
         public static string UILanguage {
@@ -3733,6 +3706,15 @@ namespace ICSharpCode.ILSpy.Properties {
         public static string UILanguage_System {
             get {
                 return ResourceManager.GetString("UILanguage_System", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Unresolved References Report.
+        /// </summary>
+        public static string UnresolvedReferencesReport {
+            get {
+                return ResourceManager.GetString("UnresolvedReferencesReport", resourceCulture);
             }
         }
         

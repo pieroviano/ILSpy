@@ -77,22 +77,25 @@ public class ReferencedByFinderTests
 	}
 
 	[Test]
-	public void Matching_Requires_The_Same_Public_Key_Token()
+	public void Matching_Requires_The_Same_Culture_And_Public_Key_Token()
 	{
 		// System.Runtime is strong-named; a reference with the right name but no token is a different assembly.
 		var runtimePath = Path.Combine(Path.GetDirectoryName(typeof(object).Assembly.Location)!, "System.Runtime.dll");
 		using var runtime = new PEFile(runtimePath);
-		string token = AssemblyReferenceMatcher.GetPublicKeyToken(runtime.Metadata)!;
+		string token = runtime.Metadata.GetPublicKeyToken();
 
-		token.Should().NotBe(AssemblyReferenceMatcher.NullToken);
-		AssemblyReferenceMatcher.Matches(
-			AssemblyNameReference.Parse($"System.Runtime, Version=1.0.0.0, Culture=neutral, PublicKeyToken={token}"), runtime)
+		token.Should().NotBe("null");
+		AssemblyNameReference.Parse($"System.Runtime, Version=1.0.0.0, Culture=neutral, PublicKeyToken={token}")
+			.IsReferenceTo(runtime.Metadata)
 			.Should().BeTrue("name and token match; the version is not part of the identity");
-		AssemblyReferenceMatcher.Matches(
-			AssemblyNameReference.Parse("System.Runtime, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"), runtime)
+		AssemblyNameReference.Parse("System.Runtime, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null")
+			.IsReferenceTo(runtime.Metadata)
 			.Should().BeFalse();
-		AssemblyReferenceMatcher.Matches(
-			AssemblyNameReference.Parse($"System.Runtime2, Version=1.0.0.0, Culture=neutral, PublicKeyToken={token}"), runtime)
+		AssemblyNameReference.Parse($"System.Runtime2, Version=1.0.0.0, Culture=neutral, PublicKeyToken={token}")
+			.IsReferenceTo(runtime.Metadata)
 			.Should().BeFalse();
+		AssemblyNameReference.Parse($"System.Runtime, Version=1.0.0.0, Culture=de-DE, PublicKeyToken={token}")
+			.IsReferenceTo(runtime.Metadata)
+			.Should().BeFalse("the culture is part of the assembly identity");
 	}
 }

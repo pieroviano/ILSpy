@@ -30,7 +30,6 @@ using Avalonia.VisualTree;
 using AwesomeAssertions;
 
 using ICSharpCode.Decompiler.TypeSystem;
-using ICSharpCode.ILSpyX.Analyzers;
 using ICSharpCode.ILSpyX.TreeView;
 
 using ICSharpCode.ILSpy.Analyzers;
@@ -98,7 +97,7 @@ public class DependencyUiTests
 		moduleRow.Module.MetadataFile.Should().BeSameAs(library.LoadedAssembly.GetMetadataFileOrNull());
 		moduleRow.EnsureLazyChildren();
 		moduleRow.Children.OfType<AnalyzerSearchTreeNode>().Select(r => r.AnalyzerHeader)
-			.Should().Contain([ModuleAnalyzerHeaders.ReferencedBy, ModuleAnalyzerHeaders.DependentCode]);
+			.Should().Contain([ReferencedByContextMenuEntry.AnalyzerHeader, DependentCodeContextMenuEntry.AnalyzerHeader]);
 
 		entry.Execute(Select(library));
 		analyzerVm.Root.Children.OfType<AnalyzedModuleTreeNode>().Should().ContainSingle("re-analyzing reuses the row");
@@ -119,10 +118,32 @@ public class DependencyUiTests
 
 		var analyzerVm = AppComposition.Current.GetExport<AnalyzerTreeViewModel>();
 		var row = (AnalyzerSearchTreeNode)analyzerVm.SelectedItems.Single();
-		row.AnalyzerHeader.Should().Be(ModuleAnalyzerHeaders.ReferencedBy);
+		row.AnalyzerHeader.Should().Be(ReferencedByContextMenuEntry.AnalyzerHeader);
 		await Waiters.WaitForAsync(() => !row.IsLoading && row.Children.OfType<AnalyzedModuleTreeNode>().Any(),
 			description: "Referenced By results");
 		row.Children.OfType<AnalyzedModuleTreeNode>().Single().Module.AssemblyName.Should().Be(consumerName);
+	}
+
+	[AvaloniaTest]
+	public async Task Module_Entries_Are_Disabled_For_An_Unresolved_Assembly_Reference()
+	{
+		var (_, vm) = await TestHarness.BootAsync();
+		var (consumerPath, missingName) = DependencyFixtures.EmitConsumerWithMissingReference("Ui");
+		var consumer = await vm.OpenAssemblyAsync(consumerPath);
+		var consumerNode = vm.AssemblyTreeModel.FindNode<AssemblyTreeNode>(consumer.ShortName);
+		consumerNode.EnsureLazyChildren();
+		var folder = consumerNode.Children.OfType<ReferenceFolderTreeNode>().Single();
+		folder.EnsureLazyChildren();
+		var reference = folder.Children.OfType<AssemblyReferenceTreeNode>()
+			.Single(r => r.AssemblyReference.Name == missingName);
+		var registry = AppComposition.Current.GetExport<ContextMenuEntryRegistry>();
+
+		foreach (var header in new[] { nameof(Resources.ReferencedBy), nameof(Resources.DependentCode) })
+		{
+			var entry = registry.GetEntry(header);
+			entry.IsVisible(Select(reference)).Should().BeTrue();
+			entry.IsEnabled(Select(reference)).Should().BeFalse($"{header} has no module to analyze");
+		}
 	}
 
 	[AvaloniaTest]
@@ -137,7 +158,7 @@ public class DependencyUiTests
 
 		var analyzerVm = AppComposition.Current.GetExport<AnalyzerTreeViewModel>();
 		var row = (AnalyzerSearchTreeNode)analyzerVm.SelectedItems.Single();
-		row.AnalyzerHeader.Should().Be(ModuleAnalyzerHeaders.DependentCode);
+		row.AnalyzerHeader.Should().Be(DependentCodeContextMenuEntry.AnalyzerHeader);
 		await Waiters.WaitForAsync(() => !row.IsLoading && row.Children.OfType<AnalyzerEntityTreeNode>().Any(),
 			description: "Dependent Code results");
 		var members = row.Children.OfType<AnalyzerEntityTreeNode>().Select(n => n.Member?.FullName).ToList();
